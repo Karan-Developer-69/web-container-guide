@@ -7,15 +7,90 @@
     <title>My first WebContainers app</title>
   </head>
   <body>
-    <header>
-      <h1>Hello, <span class="wc">WebContainers API</span>!</h1>
-      <p>
-        <a class="docs" href="https://webcontainers.io" target="_blank" rel="noreferrer noopener">
-          Read the docs 📖
-        </a>
-      </p>
-    </header>
-    <div id="app"></div>
+    <div id="app">
+      <div class="ide-container">
+        <div class="sidebar">
+          <div class="sidebar-header">
+            <span class="logo">⚡ WebContainer</span>
+          </div>
+          <div class="file-explorer">
+            <div class="explorer-title">EXPLORER</div>
+            <div class="file-list">
+              <div class="file-item active" data-file="index.js">
+                <span class="file-icon">JS</span>
+                <span>index.js</span>
+              </div>
+              <div class="file-item" data-file="package.json">
+                <span class="file-icon">📦</span>
+                <span>package.json</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="main-content">
+          <div class="editor-panel">
+            <div class="panel-header">
+              <div class="tab active">
+                <span class="tab-icon">JS</span>
+                <span>index.js</span>
+                <span class="close-tab">×</span>
+              </div>
+            </div>
+            <div class="editor-container">
+              <div class="line-numbers">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+              </div>
+              <textarea id="editor" spellcheck="false"></textarea>
+            </div>
+          </div>
+          
+          <div class="preview-panel">
+            <div class="panel-header preview-header">
+              <div class="preview-tabs">
+                <div class="preview-tab active" data-tab="preview">🌐 Preview</div>
+                <div class="preview-tab" data-tab="terminal">📟 Terminal</div>
+              </div>
+              <div class="preview-controls">
+                <button class="reload-btn" title="Reload">↻</button>
+              </div>
+            </div>
+            
+            <div class="preview-content">
+              <div class="url-bar" id="url-bar" style="display: none;">
+                <div class="url-info">
+                  <span class="status-indicator" id="status-indicator"></span>
+                  <span class="status-text" id="status-text">Initializing...</span>
+                </div>
+                <a class="url-display" id="url-display" href="#" target="_blank" rel="noopener noreferrer"></a>
+                <button class="open-tab-btn" id="open-tab-btn" title="Open in new tab">↗</button>
+              </div>
+              
+              <div class="iframe-container" id="iframe-container">
+                <iframe id="preview-frame" src="loading.html"></iframe>
+              </div>
+              
+              <div class="terminal-panel" id="terminal-panel" style="display: none;">
+                <div class="terminal-header">
+                  <span>Terminal</span>
+                  <button class="clear-terminal" id="clear-terminal">Clear</button>
+                </div>
+                <div class="terminal-output" id="terminal-output"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="boot-screen" id="boot-screen">
+        <div class="boot-content">
+          <div class="spinner"></div>
+          <div class="boot-text" id="boot-text">Initializing WebContainer...</div>
+        </div>
+      </div>
+    </div>
+    
     <script type="module" src="/main.js"></script>
   </body>
 </html>
