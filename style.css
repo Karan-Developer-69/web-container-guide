@@ -3,6 +3,44 @@
   margin: 0;
   padding: 0;
 }
+/* Icon Images */
+.file-icon-img, .tab-icon-img, .tab-img {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.tab-img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.reload-btn img, .open-tab-btn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  filter: brightness(0) invert(0.7);
+  transition: filter 0.2s;
+}
+
+.reload-btn:hover img, .open-tab-btn:hover img {
+  filter: brightness(0) invert(1);
+}
+
+/* Tab styling update */
+.preview-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 :root {
   --bg-primary: #0d1117;
