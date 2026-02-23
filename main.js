@@ -398,6 +398,188 @@ function showError(message) {
   bootScreen.style.background = '#1a0f0f';
   bootText.innerHTML = '<span style="color: #ff6b6b;">⚠️ ' + message + '</span><br><br><button onclick="location.reload()" style="padding: 10px 20px; background: #ff6b6b; border: none; color: white; border-radius: 4px; cursor: pointer;">Retry</button>';
 }
+  // Setup buttons
+  if (clearTerminalBtn) {
+    clearTerminalBtn.addEventListener('click', clearTerminal);
+  }
+  
+  if (reloadBtn) {
+    reloadBtn.addEventListener('click', function() {
+      if (previewFrame) previewFrame.src = previewFrame.src;
+    });
+  }
+  
+  if (openTabBtn) {
+    openTabBtn.addEventListener('click', function() {
+      if (urlDisplay && urlDisplay.href) {
+        window.open(urlDisplay.href, '_blank', 'noopener,noreferrer');
+      }
+    });
+  }
+  
+  // Tab switching
+  const previewTabs = document.querySelectorAll('.preview-tab');
+  const iframeContainer = document.getElementById('iframe-container');
+  const terminalPanel = document.getElementById('terminal-panel');
+  
+  previewTabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      const tabName = tab.getAttribute('data-tab');
+      
+      previewTabs.forEach(function(t) {
+        t.classList.remove('active');
+      });
+      tab.classList.add('active');
+      
+      if (tabName === 'preview') {
+        if (iframeContainer) iframeContainer.style.display = 'block';
+        if (terminalPanel) terminalPanel.style.display = 'none';
+      } else {
+        if (iframeContainer) iframeContainer.style.display = 'none';
+        if (terminalPanel) terminalPanel.style.display = 'flex';
+      }
+    });
+  });
+  
+  // Start WebContainer
+  try {
+    showBootScreen('Initializing WebContainer...');
+    webcontainerInstance = await WebContainer.boot();
+    await webcontainerInstance.mount(files);
+    
+    showBootScreen('Installing dependencies...');
+    const exitCode = await installDependencies();
+    
+    if (exitCode !== 0) {
+      throw new Error('Installation failed with exit code: ' + exitCode);
+    }
+    
+    hideBootScreen();
+    startDevServer();
+  } catch (error) {
+    console.error('Failed to initialize:', error);
+    showError('Failed to initialize: ' + error.message);
+  }
+});
+
+async function installDependencies() {
+  isInstalling = true;
+  updateStatus('installing');
+  
+  try {
+    const installProcess = await webcontainerInstance.spawn('npm', ['install']);
+    
+    installProcess.output.pipeTo(new WritableStream({
+      write: function(data) {
+        appendToTerminal(data);
+      }
+    }));
+    
+    // 2 minute timeout
+    const timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        reject(new Error('Installation timeout'));
+      }, 120000);
+    });
+    
+    return await Promise.race([installProcess.exit, timeoutPromise]);
+  } catch (error) {
+    appendToTerminal('\n[ERROR] ' + error.message + '\n');
+    return 1;
+  } finally {
+    isInstalling = false;
+  }
+}
+
+async function startDevServer() {
+  updateStatus('starting');
+  appendToTerminal('\n[SYSTEM] Starting development server...\n');
+  
+  try {
+    await webcontainerInstance.spawn('npm', ['run', 'start']);
+    
+    webcontainerInstance.on('server-ready', function(port, url) {
+      updateStatus('ready');
+      if (previewFrame) previewFrame.src = url;
+      if (urlDisplay) {
+        urlDisplay.textContent = url;
+        urlDisplay.href = url;
+      }
+      if (urlBar) urlBar.style.display = 'flex';
+      appendToTerminal('[SYSTEM] Server ready at ' + url + '\n');
+    });
+    
+    // 30 second timeout warning
+    setTimeout(function() {
+      if (previewFrame && previewFrame.src.indexOf('loading.html') !== -1) {
+        appendToTerminal('\n[WARN] Server start timeout. Check logs above.\n');
+      }
+    }, 30000);
+  } catch (error) {
+    updateStatus('error');
+    appendToTerminal('\n[ERROR] Failed to start server: ' + error.message + '\n');
+  }
+}
+
+async function writeIndexJS(content) {
+  try {
+    await webcontainerInstance.fs.writeFile('/index.js', content);
+    appendToTerminal('[FILE] Updated index.js\n');
+  } catch (error) {
+    appendToTerminal('[ERROR] Failed to write file: ' + error.message + '\n');
+  }
+}
+
+function appendToTerminal(text) {
+  if (!terminalOutput) return;
+  const line = document.createElement('div');
+  line.className = 'terminal-line';
+  line.textContent = text;
+  terminalOutput.appendChild(line);
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+function clearTerminal() {
+  if (terminalOutput) {
+    terminalOutput.innerHTML = '';
+  }
+}
+
+function updateStatus(status) {
+  if (!statusIndicator || !statusText) return;
+  
+  statusIndicator.className = 'status-indicator ' + status;
+  
+  const statusMap = {
+    'installing': 'Installing dependencies...',
+    'starting': 'Starting server...',
+    'ready': 'Server running',
+    'error': 'Error occurred'
+  };
+  
+  statusText.textContent = statusMap[status] || status;
+}
+
+function showBootScreen(message) {
+  if (!bootScreen || !bootText) return;
+  bootScreen.style.display = 'flex';
+  bootText.textContent = message;
+}
+
+function hideBootScreen() {
+  if (!bootScreen) return;
+  bootScreen.style.opacity = '0';
+  setTimeout(function() {
+    bootScreen.style.display = 'none';
+  }, 300);
+}
+
+function showError(message) {
+  if (!bootScreen || !bootText) return;
+  bootScreen.style.display = 'flex';
+  bootScreen.style.background = '#1a0f0f';
+  bootText.innerHTML = '<span style="color: #ff6b6b;">⚠️ ' + message + '</span><br><br><button onclick="location.reload()" style="padding: 10px 20px; background: #ff6b6b; border: none; color: white; border-radius: 4px; cursor: pointer;">Retry</button>';
+}
     if (exitCode !== 0) throw new Error('Installation failed with exit code: ' + exitCode);
     
     hideBootScreen();
