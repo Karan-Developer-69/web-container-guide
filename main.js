@@ -2,25 +2,70 @@ import './style.css'
 import { WebContainer } from '@webcontainer/api';
 import { files } from './files';
 
-/** @type {import('@webcontainer/api').WebContainer}  */
 let webcontainerInstance;
 let isInstalling = false;
 
+// DOM Elements
+const editor = document.getElementById('editor');
+const urlBar = document.getElementById('url-bar');
+const urlDisplay = document.getElementById('url-display');
+const openTabBtn = document.getElementById('open-tab-btn');
+const statusIndicator = document.getElementById('status-indicator');
+const statusText = document.getElementById('status-text');
+const previewFrame = document.getElementById('preview-frame');
+const terminalOutput = document.getElementById('terminal-output');
+const clearTerminalBtn = document.getElementById('clear-terminal');
+const reloadBtn = document.querySelector('.reload-btn');
+const bootScreen = document.getElementById('boot-screen');
+const bootText = document.getElementById('boot-text');
+const previewTabs = document.querySelectorAll('.preview-tab');
+const iframeContainer = document.getElementById('iframe-container');
+const terminalPanel = document.getElementById('terminal-panel');
+
+// Initialize
 window.addEventListener('load', async () => {
-  initializeUI();
+  editor.value = files['index.js'].file.contents;
   
+  // Debounced input handler
+  let timeout;
+  editor.addEventListener('input', (e) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => writeIndexJS(e.target.value), 500);
+  });
+
+  clearTerminalBtn?.addEventListener('click', clearTerminal);
+  reloadBtn?.addEventListener('click', () => previewFrame.src = previewFrame.src);
+  openTabBtn?.addEventListener('click', () => {
+    if (urlDisplay?.href) window.open(urlDisplay.href, '_blank', 'noopener,noreferrer');
+  });
+
+  // Tab switching
+  previewTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+      previewTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      if (tabName === 'preview') {
+        iframeContainer.style.display = 'block';
+        terminalPanel.style.display = 'none';
+      } else {
+        iframeContainer.style.display = 'none';
+        terminalPanel.style.display = 'flex';
+      }
+    });
+  });
+
+  // Start WebContainer
   try {
     showBootScreen('Initializing WebContainer...');
-    
     webcontainerInstance = await WebContainer.boot();
     await webcontainerInstance.mount(files);
     
     showBootScreen('Installing dependencies...');
     const exitCode = await installDependencies();
     
-    if (exitCode !== 0) {
-      throw new Error('Installation failed with exit code: ' + exitCode);
-    }
+    if (exitCode !== 0) throw new Error('Installation failed with exit code: ' + exitCode);
     
     hideBootScreen();
     startDevServer();
@@ -30,10 +75,105 @@ window.addEventListener('load', async () => {
   }
 });
 
-function initializeUI() {
-  textareaEl.value = files['index.js'].file.contents;
+async function installDependencies() {
+  isInstalling = true;
+  updateStatus('installing');
   
-  let timeout;
+  try {
+    const installProcess = await webcontainerInstance.spawn('npm', ['install']);
+    installProcess.output.pipeTo(new WritableStream({
+      write(data) { appendToTerminal(data); }
+    }));
+    
+    // 2 minute timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Installation timeout')), 120000);
+    });
+    
+    return await Promise.race([installProcess.exit, timeoutPromise]);
+  } catch (error) {
+    appendToTerminal('\n[ERROR] ' + error.message + '\n');
+    return 1;
+  } finally {
+    isInstalling = false;
+  }
+}
+
+async function startDevServer() {
+  updateStatus('starting');
+  appendToTerminal('\n[SYSTEM] Starting development server...\n');
+  
+  try {
+    await webcontainerInstance.spawn('npm', ['run', 'start']);
+    
+    webcontainerInstance.on('server-ready', (port, url) => {
+      updateStatus('ready');
+      previewFrame.src = url;
+      urlDisplay.textContent = url;
+      urlDisplay.href = url;
+      urlBar.style.display = 'flex';
+      appendToTerminal('[SYSTEM] Server ready at ' + url + '\n');
+    });
+    
+    // 30 second timeout warning
+    setTimeout(() => {
+      if (previewFrame.src.includes('loading.html')) {
+        appendToTerminal('\n[WARN] Server start timeout. Check logs above.\n');
+      }
+    }, 30000);
+  } catch (error) {
+    updateStatus('error');
+    appendToTerminal('\n[ERROR] Failed to start server: ' + error.message + '\n');
+  }
+}
+
+async function writeIndexJS(content) {
+  try {
+    await webcontainerInstance.fs.writeFile('/index.js', content);
+    appendToTerminal('[FILE] Updated index.js\n');
+  } catch (error) {
+    appendToTerminal('[ERROR] Failed to write file: ' + error.message + '\n');
+  }
+}
+
+function appendToTerminal(text) {
+  const line = document.createElement('div');
+  line.className = 'terminal-line';
+  line.textContent = text;
+  terminalOutput.appendChild(line);
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+function clearTerminal() {
+  terminalOutput.innerHTML = '';
+}
+
+function updateStatus(status) {
+  statusIndicator.className = 'status-indicator ' + status;
+  const statusMap = {
+    'installing': 'Installing dependencies...',
+    'starting': 'Starting server...',
+    'ready': 'Server running',
+    'error': 'Error occurred'
+  };
+  statusText.textContent = statusMap[status] || status;
+}
+
+function showBootScreen(message) {
+  bootScreen.style.display = 'flex';
+  bootText.textContent = message;
+}
+
+function hideBootScreen() {
+  bootScreen.style.opacity = '0';
+  setTimeout(() => bootScreen.style.display = 'none', 300);
+}
+
+function showError(message) {
+  bootScreen.style.display = 'flex';
+  bootScreen.style.background = '#1a0f0f';
+  bootText.innerHTML = '<span style="color: #ff6b6b;">⚠️ ' + message + '</span><br><br><button onclick="location.reload()" style="padding: 10px 20px; background: #ff6b6b; border: none; color: white; border-radius: 4px; cursor: pointer;">Retry</button>';
+}
   textareaEl.addEventListener('input', (e) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
