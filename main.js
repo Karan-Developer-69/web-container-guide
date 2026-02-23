@@ -247,7 +247,6 @@ function showError(message) {
     console.error('Failed to initialize:', error);
     showError('Failed to initialize: ' + error.message);
   }
-});
 
 async function installDependencies() {
   isInstalling = true;
