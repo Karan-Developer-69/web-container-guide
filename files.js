@@ -39,6 +39,63 @@ app.get('/', (req, res) => {
     </style>
 </head>
 <body>
+    <div class="card">
+        <h1>🚀 WebContainer App Running!</h1>
+        <p>Your Express server is successfully running inside a WebContainer.</p>
+        <span class="status">● Server Active</span>
+        <p style="margin-top: 20px; opacity: 0.9;">
+            Edit <code>index.js</code> in the editor to see live updates!
+        </p>
+    </div>
+</body>
+</html>\`);
+});
+
+app.listen(port, () => {
+    console.log('App is live at http://localhost:' + port);
+});`,
+    },
+  },
+  'package.json': {
+    file: {
+      contents: JSON.stringify({
+        "name": "example-app",
+        "version": "1.0.0",
+        "type": "module",
+        "dependencies": {
+          "express": "^4.18.2"
+        },
+        "scripts": {
+          "start": "node index.js"
+        }
+      }, null, 2),
+    },
+  },
+  'package-lock.json': {
+    file: {
+      contents: JSON.stringify({
+        "name": "example-app",
+        "version": "1.0.0",
+        "lockfileVersion": 3,
+        "requires": true,
+        "packages": {
+          "": {
+            "name": "example-app",
+            "version": "1.0.0",
+            "dependencies": {
+              "express": "^4.18.2"
+            }
+          }
+        }
+      }, null, 2),
+    },
+  },
+};
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
     <div class=\"card\">
         <h1>🚀 WebContainer App Running!</h1>
         <p>Your Express server is successfully running inside a WebContainer.</p>
